@@ -1,0 +1,24 @@
+<div xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+    <ul id="messages">
+    </ul>
+    <form action="/msg" method="POST">
+        <input type="text" name="msg" value="" />
+        <button type="submit">Say</button>
+    </form>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function() {
+            var source = new EventSource('/updates');
+            source.onmessage = function(event) {
+                console.log(event.data);
+                $('#messages').append(event.data);
+            };
+
+            $('form').submit(function(e) {
+                e.preventDefault();
+                $.post("/msg", $(this).serialize(), function() {});
+                return null;
+            });
+        });
+    </script>
+</div>

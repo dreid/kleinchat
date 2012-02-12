@@ -1,0 +1,6 @@
+<div xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+    <form action="/login" method="POST">
+        <input type="text" name="name" value="Name" />
+        <button type="submit">Login</button>
+    </form>
+</div>

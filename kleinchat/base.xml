@@ -1,0 +1,7 @@
+<html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+<head>
+    <title>Klein Chat</title>
+</head>
+<body t:render="body">
+</body>
+</html>
