@@ -1,7 +1,6 @@
 import os
 
-from klein.decorators import expose
-from klein.resource import KleinResource
+from klein import route, run
 
 from twisted.internet.defer import Deferred
 from twisted.web.template import Element, XMLFile, renderer, flattenString
@@ -12,6 +11,7 @@ from twisted.web.server import Session
 
 def template(base):
     return XMLFile(os.path.join(os.path.dirname(__file__), base))
+
 
 class Base(Element):
     loader = template("base.xml")
@@ -40,6 +40,7 @@ class LoginPage(Base):
 class IUser(Interface):
     name = Attribute("username")
 
+
 class User(object):
     implements(IUser)
 
@@ -47,6 +48,7 @@ class User(object):
         self.name = None
 
 registerAdapter(User, Session, IUser)
+
 
 class Message(Element):
     loader = template("message.xml")
@@ -68,59 +70,64 @@ def renderMessage(name, message, request):
     return flattenString(request, Message(name, message))
 
 
-class KleinChat(KleinResource):
-    def __init__(self):
-        self.clients = {}
+_clients = {}
 
-    @expose("/updates")
-    def updates(self, request):
-        d = Deferred()
+@route("/updates")
+def updates(request):
+    d = Deferred()
 
-        request.setHeader('content-type', 'text/event-stream')
+    request.setHeader('content-type', 'text/event-stream')
 
-        user = request.getSession(IUser)
+    user = request.getSession(IUser)
 
-        if user not in self.clients:
-            self.clients[user] = request
+    _clients[user] = request
 
-        return d
+    return d
 
-    @expose("/favicon.ico")
-    def favicon(self, request):
-        return ''
 
-    @expose("/msg")
-    def msg(self, request):
-        user = IUser(request.getSession())
+@route("/favicon.ico")
+def favicon(request):
+    return ''
 
-        for client in self.clients:
-            updateRequest = self.clients[client]
-            def writeEvent(message):
-                for line in message.split('\n'):
-                    updateRequest.write('data: ' + line + '\r\n')
 
-                updateRequest.write('\r\n')
+@route("/msg")
+def msg(request):
+    user = IUser(request.getSession())
 
-            d = renderMessage(user.name, request.args['msg'][0], request)
-            d.addCallback(writeEvent)
+    for client in _clients:
+        updateRequest = _clients[client]
 
-        return 'ok'
+        def writeEvent(message, ur):
+            for line in message.split('\n'):
+                ur.write('data: ' + line + '\r\n')
 
-    @expose("/")
-    def index(self, request):
-        user = request.getSession(IUser)
+            ur.write('\r\n')
 
-        if user.name == None:
-            return LoginPage()
-        else:
-            return ChatPage()
+        d = renderMessage(user.name, request.args['msg'][0], request)
+        d.addCallback(writeEvent, updateRequest)
 
-    @expose("/login")
-    def login(self, request):
-        session = request.getSession()
-        user = IUser(session)
-        user.name = request.args['name'][0]
-        print user.name, session.uid
+    return 'ok'
 
-        request.redirect("/")
-        request.finish()
+
+@route("/")
+def index(request):
+    user = request.getSession(IUser)
+
+    if user.name == None:
+        return LoginPage()
+    else:
+        return ChatPage()
+
+
+@route("/login")
+def login(request):
+    session = request.getSession()
+    user = IUser(session)
+    user.name = request.args['name'][0]
+
+    request.redirect("/")
+    request.finish()
+
+
+if __name__ == '__main__':
+    run("localhost", 8080)
