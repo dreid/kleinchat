@@ -1,6 +1,6 @@
 import os
 
-from klein import route, run
+from klein import route, resource, run
 
 from twisted.internet.defer import Deferred
 from twisted.web.template import Element, XMLFile, renderer, flattenString
